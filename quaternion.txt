@@ -1,0 +1,66 @@
+attribute vec3 position;
+attribute vec4 color;
+attribute vec2 texCoord;
+
+uniform mat4 mvpMatrix;
+uniform float time;
+
+varying vec4 vColor;
+varying vec2 vTexCoord;
+
+vec4 multipleQuaternion(vec4 p, vec4 q){
+	return vec4(
+		p.w * q.x + p.x * q.w + p.z * q.y - p.y * q.z,
+		p.w * q.y + p.y * q.w + p.x * q.z - p.z * q.x,
+		p.w * q.z + p.z * q.w + p.y * q.x - p.x * q.y,
+		p.w * q.w - p.x * q.x - p.y * q.y - p.z * q.z
+	);
+}
+
+vec4 rotateQuaternion(vec3 axis, float angle){
+	vec3 n = normalize(axis);
+	float h = angle * 0.5;
+	float s = sin(h);
+	float c = cos(h);
+	return vec4(n * s, c);
+}
+
+vec3 quaternionToVec3(vec3 v, vec4 q){
+	return v + 2.0 * cross(cross(v, q.xyz) + q.w * v, q.xyz);
+}
+
+mat4 identityMat4(){
+	return mat4(
+		1.0, 0.0, 0.0, 0.0,
+		0.0, 1.0, 0.0, 0.0,
+		0.0, 0.0, 1.0, 0.0,
+		0.0, 0.0, 0.0, 1.0
+	);
+}
+
+mat4 quaternionToMat4(vec4 q){
+	vec3 p = q.xyz * 2.0;
+	mat3 n = mat3(
+		q.x * p.x, q.y * p.x, q.y * p.y,
+		q.z * p.x, q.z * p.y, q.z * p.z,
+		q.w * p.x, q.w * p.y, q.w * p.z
+	);
+	return mat4(
+		1.0 - (n[0][2] - n[1][2]),        n[0][1] + n[2][2] ,        n[1][0] - n[2][1] , 0.0,
+		       n[0][1] - n[2][2] , 1.0 - (n[0][0] - n[1][2]),        n[1][1] + n[2][0] , 0.0,
+		       n[1][0] + n[2][1] ,        n[1][1] - n[2][0] , 1.0 - (n[0][0] - n[0][2]), 0.0,
+		                     0.0 ,                      0.0 ,                      0.0 , 1.0
+	);
+}
+
+void main(){
+	vec4 q = vec4(0.0, 0.0, 0.0, 1.0);
+	vec4 r = rotateQuaternion(vec3(0.0, 0.0, 1.0), time);
+	mat4 m = quaternionToMat4(r);
+    vec3 rp = quaternionToVec3(position, r);
+    vec3 mp = (m * vec4(position, 1.0)).xyz;
+    gl_Position = mvpMatrix * vec4(mp, 1.0);
+    vColor = color;
+    vTexCoord = texCoord;
+}
+
